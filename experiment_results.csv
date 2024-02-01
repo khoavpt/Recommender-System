@@ -1,0 +1,4 @@
+model,k_neighbors_count,x,similarity_function,MAE
+user_based,30,0.2,pure_cosine,1.22
+item_based,30,0.2,pure_cosine,1.094
+item_based,10,0.8,pure_cosine,0.8743288064189818

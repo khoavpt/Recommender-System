@@ -8,6 +8,8 @@ def cosine_similarity(vector1, vector2):
 
 def adjusted_cosine_similarity(vector1, vector2):
     """Adjusted cosine similarity between two vectors."""
+    if vector1.size == 0:
+        return 0
     normalized_vector1 = vector1 - np.mean(vector1)
     normalized_vector2 = vector2 - np.mean(vector2)
 

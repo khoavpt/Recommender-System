@@ -4,9 +4,8 @@ from utils.similarity_measure import cosine_similarity, pearson_correlation
 from recommenders.recommender_system import RecommenderSystem
     
 class UserBasedRecommenderSystem(RecommenderSystem):
-    def __init__(self, ratings_df, similarity_measure=cosine_similarity):
-        super().__init__(ratings_df)
-        self.similarity_measure = similarity_measure
+    def __init__(self, ratings_df, k_neighbors,similarity_measure=cosine_similarity):
+        super().__init__(ratings_df, k_neighbors, similarity_measure)
         self.similarity_matrix = None
     
     def fit(self):
@@ -32,7 +31,7 @@ class UserBasedRecommenderSystem(RecommenderSystem):
 
                     self.similarity_matrix[self.user_to_index[user_i], self.user_to_index[user_j]] = similarity
     
-    def predict_rating(self, user_id, movie_id, k_neighbors=10):
+    def predict_rating(self, user_id, movie_id):
         """
         Predict rating of user_id for movie_id
         """
@@ -52,7 +51,7 @@ class UserBasedRecommenderSystem(RecommenderSystem):
         users_rated_movie_index = np.nonzero(movie_ratings != 0)[0]
         users_similarities = self.similarity_matrix[user_index, users_rated_movie_index]
 
-        top_k_similar_indexes = np.argsort(users_similarities)[-k_neighbors:]
+        top_k_similar_indexes = np.argsort(users_similarities)[-self.k_neighbors:]
         top_k_similarities = users_similarities[top_k_similar_indexes]
         top_k_movie_ratings = movie_ratings[users_rated_movie_index[top_k_similar_indexes]]
 

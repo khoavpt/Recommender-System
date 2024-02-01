@@ -2,9 +2,12 @@ import numpy as np
 import pickle
 
 from sklearn.metrics import mean_absolute_error
+from utils.similarity_measure import cosine_similarity, pearson_correlation
 
 class RecommenderSystem:
-    def __init__(self, ratings_df):
+    def __init__(self, ratings_df, k_neighbors=10, similarity_measure=cosine_similarity):
+        self.k_neighbors = k_neighbors
+        self.similarity_measure = similarity_measure
         self.unique_movies = ratings_df['movieId'].unique()
         self.movie_to_index = {movie_id: index for index, movie_id in enumerate(self.unique_movies)}
         self.unique_users = ratings_df['userId'].unique()
@@ -23,13 +26,13 @@ class RecommenderSystem:
         raise NotImplementedError
 
     # Abstract method
-    def predict_rating(self, user_id, movie_id, k_neighbors=10):
+    def predict_rating(self, user_id, movie_id):
         """
         Predict rating of user_id for movie_id
         """
         raise NotImplementedError
     
-    def recommend_items(self, user_id, top_n, k_neighbors=10):
+    def recommend_items(self, user_id, top_n):
         """
         Recommend top_n items for user_id
         """
@@ -40,7 +43,7 @@ class RecommenderSystem:
         movies_not_rated_by_user_index = np.nonzero(user_ratings == 0)[0]
         movie_ratings = []
         for movie_index in movies_not_rated_by_user_index:
-            rating = self.predict_rating(user_id, self.unique_movies[movie_index], k_neighbors)
+            rating = self.predict_rating(user_id, self.unique_movies[movie_index], self.k_neighbors)
             movie_ratings.append((movie_index, rating))
         return [self.unique_movies[movie_index] for movie_index, _ in sorted(movie_ratings, key=lambda x: x[1], reverse=True)[:top_n]]
     
