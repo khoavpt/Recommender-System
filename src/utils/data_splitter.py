@@ -11,6 +11,6 @@ def get_data(data_path, train_size, random_state=42):
         train_set: training set
         test_set: test set
     """
-    ratings_df = pd.read_csv(data_path, usecols=['userId', 'movieId', 'rating'])
+    ratings_df = pd.read_csv(data_path, sep='\t', names=['userId', 'movieId', 'rating', 'timestamp'], usecols=range(3))
     train_set, test_set = train_test_split(ratings_df, test_size=1-train_size, random_state=random_state)
     return train_set, test_set

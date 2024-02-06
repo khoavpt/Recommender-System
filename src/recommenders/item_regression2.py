@@ -1,11 +1,10 @@
 import numpy as np
 
-from utils.similarity_measure import cosine_similarity, pearson_correlation
-from recommenders.recommender_system import RecommenderSystem
+from recommenders.memory_based_recommender_system import MemoryBasedRecommenderSystem
 
-class ItemBasedRegressionRecommenderSystem(RecommenderSystem):
-    def __init__(self, ratings_df, k_neighbors, similarity_measure=cosine_similarity):
-        super().__init__(ratings_df, k_neighbors, similarity_measure)
+class ItemBasedRegressionRecommenderSystem2(MemoryBasedRecommenderSystem):
+    def __init__(self, ratings_df, model_size, similarity_measure='adjusted_cosine'):
+        super().__init__(ratings_df, model_size, similarity_measure)
         self.top_k_similar_movie_indexes = {movie_id: None for movie_id in self.unique_movies}
         self.weights_matrix = None
 
@@ -13,7 +12,7 @@ class ItemBasedRegressionRecommenderSystem(RecommenderSystem):
         """
         Calculate similarity matrix between items and store it in self.similarity_matrix
         """
-        self.weights_matrix = np.zeros((len(self.unique_movies), self.k_neighbors))
+        self.weights_matrix = np.zeros((len(self.unique_movies), self.model_size))
         for movie_i in self.unique_movies:
             top_k_similarities_for_movie_i = []
             for movie_j in self.unique_movies:
@@ -28,12 +27,12 @@ class ItemBasedRegressionRecommenderSystem(RecommenderSystem):
 
                     top_k_similarities_for_movie_i.append((self.movie_to_index[movie_j], similarity))
             # print(np.array(sorted(top_k_similarities_for_movie_i, key=lambda x: x[1], reverse=True)[:self.k_neighbors], dtype=int)[:, 0])
-            self.top_k_similar_movie_indexes[movie_i] = np.array(sorted(top_k_similarities_for_movie_i, key=lambda x: x[1], reverse=True)[:self.k_neighbors], dtype=int)[:, 0]
+            self.top_k_similar_movie_indexes[movie_i] = np.array(sorted(top_k_similarities_for_movie_i, key=lambda x: x[1], reverse=True)[:self.model_size], dtype=int)[:, 0]
             X = self.rating_matrix[users_rated_movie_i_index, :][:, self.top_k_similar_movie_indexes[movie_i]]
             y = self.rating_matrix[users_rated_movie_i_index, self.movie_to_index[movie_i]]
             self.weights_matrix[self.movie_to_index[movie_i], :] = np.linalg.pinv(X.T @ X) @ X.T @ y
-    
-    def predict_rating(self, user_id, movie_id):
+
+    def predict_rating(self, user_id, movie_id, neighborhood_size=30):
         """
         Predict rating of user_id for movie_id
         """
@@ -51,4 +50,5 @@ class ItemBasedRegressionRecommenderSystem(RecommenderSystem):
 
         user_ratings_on_similar_movies = self.rating_matrix[user_index, self.top_k_similar_movie_indexes[movie_id]]
         rating_prediction = self.weights_matrix[movie_index, :] @ user_ratings_on_similar_movies
-        return rating_prediction
+
+        return 5 if rating_prediction > 5 else 0.5 if rating_prediction < 0.5 else rating_prediction
