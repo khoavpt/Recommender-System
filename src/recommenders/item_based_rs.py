@@ -1,13 +1,15 @@
 import numpy as np
+import torch
+
 
 from utils.similarity_measure import pure_cosine_similarity, pearson_correlation
-from recommenders.memory_based_recommender_system import MemoryBasedRecommenderSystem
+from recommenders.memory_based_rs import MemoryBasedRecommenderSystem
 
 class ItemBasedRecommenderSystem(MemoryBasedRecommenderSystem):
-    def __init__(self, ratings_df, model_size, similarity_measure='adjusted_cosine'):
-        super().__init__(ratings_df, model_size, similarity_measure)
+    def __init__(self, ratings_df, neighborhood_size, precompute_rating_matrix_path=None, precompute_similarity_matrix_path=None, similarity_measure='adjusted_cosine'):
+        super().__init__(ratings_df, neighborhood_size, precompute_rating_matrix_path, precompute_similarity_matrix_path, similarity_measure)
 
-    def fit(self):
+    def calculate_similarity_matrix(self):
         """
         Calculate similarity matrix between items and store it in self.similarity_matrix
         """
@@ -40,7 +42,16 @@ class ItemBasedRecommenderSystem(MemoryBasedRecommenderSystem):
 
                     self.similarity_matrix[movie_i_index, movie_j_index] = similarity
 
-    def predict_rating(self, user_id, movie_id, neighborhood_size=30):
+        self.similarity_matrix = torch.from_numpy(self.similarity_matrix).float()
+
+    def fit(self):
+        """
+        If does not use precomputed similarity matrix, calculate similarity matrix between items and store it in self.similarity_matrix
+        """
+        if self.similarity_matrix is None:
+            self.calculate_similarity_matrix()
+
+    def predict_rating(self, user_id, movie_id):
         """
         Predict rating of user_id for movie_id
         """
@@ -48,23 +59,23 @@ class ItemBasedRecommenderSystem(MemoryBasedRecommenderSystem):
         movie_index = self.movie_to_index.get(movie_id)
 
         if user_index is None and movie_index is None:
-            return np.nanmean(self.rating_matrix)
+            return torch.nanmean(self.rating_matrix)
         elif movie_index is None:
-            return np.nanmean(self.rating_matrix[user_index, :])
+            return torch.nanmean(self.rating_matrix[user_index, :])
         elif user_index is None:
-            return np.nanmean(self.rating_matrix[:, movie_index])
-        elif not np.isnan(self.rating_matrix[user_index, movie_index]):
+            return torch.nanmean(self.rating_matrix[:, movie_index])
+        elif not torch.isnan(self.rating_matrix[user_index, movie_index]):
             return self.rating_matrix[user_index, movie_index]
 
         user_ratings = self.rating_matrix[user_index, :]
-        movies_rated_by_user_index = np.nonzero(~np.isnan(user_ratings))[0]
+        movies_rated_by_user_index = torch.nonzero(~torch.isnan(user_ratings)).squeeze()
         movie_similarities = self.similarity_matrix[movie_index, movies_rated_by_user_index]
 
-        top_k_similar_indexes = np.argsort(movie_similarities)[-neighborhood_size:]
+        top_k_similar_indexes = torch.argsort(movie_similarities)[-self.neighborhood_size:]
         top_k_similarities = movie_similarities[top_k_similar_indexes]
         top_k_user_ratings = user_ratings[movies_rated_by_user_index[top_k_similar_indexes]]
 
-        denominator = np.linalg.norm(top_k_similarities, ord=1)
-        rating_prediction = np.dot(top_k_similarities, top_k_user_ratings) / denominator if denominator != 0 else np.nanmean(self.rating_matrix[:, movie_index])
+        denominator = torch.norm(top_k_similarities, p=1)
+        rating_prediction = torch.dot(top_k_similarities, top_k_user_ratings) / denominator if denominator != 0 else torch.nanmean(self.rating_matrix[:, movie_index])
 
         return rating_prediction
